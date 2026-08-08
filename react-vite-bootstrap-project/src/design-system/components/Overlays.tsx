@@ -5,15 +5,17 @@ export interface SnackbarProps {
   children: ReactNode;
   tone?: 'default' | 'error';
   action?: ReactNode;
+  'data-testid'?: string;
 }
 
 /** Transient, low-priority message. Positioned by the Snackbar navigation container. */
-export function Snackbar({ children, tone = 'default', action }: SnackbarProps) {
+export function Snackbar({ children, tone = 'default', action, 'data-testid': dataTestId }: SnackbarProps) {
   return (
     <div
       className={['gm-snackbar', tone === 'error' ? 'gm-snackbar--error' : ''].filter(Boolean).join(' ')}
       role="status"
       aria-live="polite"
+      data-testid={dataTestId}
     >
       <Text tone="onBrand">{children}</Text>
       {action && <span className="gm-snackbar__action">{action}</span>}

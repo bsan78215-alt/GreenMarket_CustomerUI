@@ -7,23 +7,46 @@
 ## Структура репозитория
 
 > Добавлено 2026-07-15 по итогам ревью структуры репозитория — файлы перенесены из корня в подпапки, сам этот README обновлён на актуальные пути.
+> Обновлено позже: в дерево добавлены фактически существующие в репозитории `react-vite-bootstrap-project/`, `tests_folder/`, `_inventory/` и вспомогательные файлы, которых в исходной редакции не было.
 
 ```
 /
-├── README.md              — этот файл: история и статус документации Customer UI (ТЗ-001…ТЗ-026, пакеты 1–4)
+├── README.md                    — этот файл: история и статус документации Customer UI (ТЗ-001…ТЗ-026, пакеты 1–4)
 ├── docs/
-│   ├── README.md           — навигация по подпапкам docs/
-│   ├── specifications/     — утверждённые и черновые ТЗ (все "NN_tzXXX_....md")
-│   ├── reviews/            — ревью, рецензии, мета-разборы архива
-│   └── architecture/       — ТЗ по подготовке к FSM Engine (промпт + ТЗ-022)
-├── examples/               — примеры кода (BottomSheetDeclarative_3.jsx/.tsx, types.ts)
-├── archive/                — исторические zip-снимки архива (v3_2026-07-08_2.zip)
-└── greenmarket/GreenMarket/ — сам код UI-модуля (contracts/, screens/, adapters/ и т.д.) + его собственная документация:
-    └── docs/
-        ├── design-system/  — Design System GreenMarket (README, DS-001, DS-002 токены)
-        ├── ux/              — UX-артефакты экранов (Stage 1)
-        └── architecture/    — GM-010 Stage 1 Model Mapping
+│   ├── README.md                — навигация по подпапкам docs/
+│   ├── specifications/          — утверждённые и черновые ТЗ (все "NN_tzXXX_....md")
+│   ├── reviews/                 — ревью, рецензии, мета-разборы архива
+│   └── architecture/            — ТЗ по подготовке к FSM Engine (промпт + ТЗ-022)
+├── greenmarket/GreenMarket/     — эталонная библиотека доменов Customer UI (ViewModel / Adapter / Builder / Screen)
+│   └── docs/                    — документация UI-модуля:
+│       ├── design-system/       — Design System GreenMarket (README, DS-001, DS-002 токены)
+│       ├── ux/                  — UX-артефакты экранов (Stage 1)
+│       └── architecture/        — GM-010 Stage 1 Model Mapping
+├── react-vite-bootstrap-project/ — ИСПОЛНЯЕМОЕ приложение Stage 1 (React 18 + Vite 5 + TS strict)
+│   ├── src/buyer_mvp/           — Buyer MVP: Главная / Каталог / Карточка товара (REST Catalog API)
+│   ├── src/platform-core/       — рабочая копия greenmarket/ + домен Map (IMP-003.1) и доп. экраны
+│   ├── src/design-system/       — реализация Design System (токены, тема, компоненты)
+│   ├── src/containers/ src/layout/ src/screens/map/ src/app/ — инфраструктура приложения
+│   └── README.md                — README проекта (см. раздел о его статусе ниже)
+├── navigation-runtime-layer/    — изолированный runtime-слой: стек навигации, ScreenRegistry, тесты (npx tsx)
+├── tests_folder/                — методология и ТЗ на тестирование (TEST_COVERAGE.md, TZ_TESTING_BUYER_MVP.md)
+├── _inventory/                  — инвентаризация репозитория (FILE_TREE, DOCUMENT_INDEX, CODE_INDEX, TRACEABILITY)
+├── examples/                    — примеры кода (BottomSheetDeclarative_3.jsx/.tsx, types.ts)
+├── archive/                     — исторический zip-снимок архива (v3_2026-07-08_2.zip)
+├── greenmarket-server.bat       — запуск/останов dev-сервера react-vite-bootstrap-project (порт 5173)
+├── AI-first Engineering Process.docx — процессная документация (не входит в серию ТЗ)
+└── vite-dev.log / vite-dev-err.log — логи dev-сервера (создаются при запуске greenmarket-server.bat)
 ```
+
+> ⚠️ **Две параллельные копии одного кода.** `greenmarket/GreenMarket/` — эталонная библиотека
+> доменов (описана в `_inventory/CODE_INDEX.md`), а `react-vite-bootstrap-project/src/platform-core/` —
+> её рабочая копия внутри исполняемого приложения. Часть файлов идентична (например
+> `BottomSheetDeclarative.tsx`, `viewmodels/SellerCardViewModel.ts`), часть разошлась
+> (`contracts/Action.ts`, `screens/CatalogScreen.ts`, `runtime/GreenMarketRuntime.ts` и т.д.).
+> Кроме того, в `src/platform-core/` есть код, которого в `greenmarket/` нет: домен `map/`
+> (MapRuntime, LeafletAdapter, GeoService…), `contracts/BusinessEvent.ts`, `diagnostics/Diagnostics.ts`,
+> экраны `MapScreen.ts`, `SellerCatalogScreen.ts`, `SellerListScreen.ts`. Сверка этих двух копий
+> между собой и с ТЗ — отдельная незакрытая задача.
 
 **Правило разделения документации** (важно не путать при добавлении новых файлов):
 
@@ -58,6 +81,27 @@
 - ☐ Сведение архива в нормативный `docs/architecture/` (синтез по образцу v1 → v2)
 
 > ⚠️ Номер ТЗ-025 переиспользован: рецензия (ссылка 25) резервировала его под будущую «Карту», но пришедший документ (ссылка 27) сам называет себя «ТЗ-025. Карточка продавца». Ещё один случай переиспользованной нумерации, см. раздел ниже — зафиксировано как есть, без исправления номера.
+
+## Фактическое состояние кода (сверено с репозиторием, 2026-08)
+
+Кодовая часть репозитория, в отличие от документации, **не является «черновиком»**: приложение Stage 1 собирается и запускается. Состояние по данным инвентаризации `_inventory/`:
+
+**Исполняемое приложение — `react-vite-bootstrap-project/`** (запуск: `greenmarket-server.bat start`, dev-сервер на `http://localhost:5173`). Состоит из:
+
+- **`src/buyer_mvp/`** — Buyer MVP Stage 1: экраны Главная / Каталог / Карточка товара, клиентский код REST Catalog API (`/catalog/groups`, `/catalog/products`, `/catalog/products/{id}`), контракт описан в `src/buyer_mvp/types.ts`. Именно эти экраны покрываются `tests_folder/TZ_TESTING_BUYER_MVP.md`.
+- **`src/platform-core/`** — рабочая копия `greenmarket/GreenMarket/` (домены basket, catalog, favorites, product_card, purchase_options, search, seller_card + contracts + navigation-runtime-layer) **плюс** реализованный экран **Map** (`src/platform-core/map/`, ссылается на IMP-003.1 / IMP-003.1.1 / IMP-003.1.2 / AR-003 — этих документов в репозитории нет), `contracts/BusinessEvent.ts`, `diagnostics/Diagnostics.ts`, экраны `MapScreen.ts`, `SellerCatalogScreen.ts` (патч), `SellerListScreen.ts` (заглушка).
+- **`src/design-system/`, `src/containers/`, `src/layout/`, `src/screens/map/`, `src/app/`** — реализация Design System (токены `colors.ts`/`typography.ts`/`scales.ts`, компоненты, тема), контейнеры (BottomSheet, Modal, Overlay, Snackbar), layout-примитивы, экран Map (`MapScreenView.tsx`, 302 строки), App Shell (RuntimeProvider, ErrorBoundary, Router).
+
+**Эталонная библиотека — `greenmarket/GreenMarket/`** (63 файла .ts/.tsx, 3174 строки): та же архитектура Screen → Builder → Adapter → ViewModel в 7 доменах, но **без** домена Map и без исполняемого приложения вокруг.
+
+**Runtime-слой — `navigation-runtime-layer/`**: стек навигации (`NavigationStack.ts`), `ScreenRegistry.ts`, `GreenMarketRuntime.ts` + 4 теста (запуск вручную `npx tsx`, без jest/vitest и без CI). Его рабочая копия в `react-vite-bootstrap-project/src/platform-core/navigation-runtime-layer/` содержит ещё 2 теста (65 + 38 строк).
+
+**Тестирование Buyer MVP**: `tests_folder/` содержит только документы (методология `TEST_COVERAGE.md` и ТЗ `TZ_TESTING_BUYER_MVP.md`), самих Playwright-сценариев в репозитории нет — тесты предстоит написать.
+
+**Известные расхождения код ↔ документация** (подробно — в `_inventory/TRACEABILITY.md`):
+
+- Код ссылается на документы, которых в репозитории нет: **ТЗ-027 §5** (SellerCardBuilder), **ТЗ-035/036/037/038** (доменные контракты Поиск/Каталог/Корзина/Избранное), **GM-DOM-001/002/003** (Domain Model / Repository Contract), **IMP-003.1 / IMP-003.1.1 / IMP-003.1.2 / AR-003** (экран Map, цитируется только в `react-vite-bootstrap-project/`).
+- Подтверждённые существующими файлами ссылки: ТЗ-025 v1.1, ТЗ-022, ТЗ-024, ТЗ-018, ТЗ-015, ТЗ-002, ТЗ-004 (как «отсутствует»), GM-UX-001…013.
 
 ## Отличие от v1/v2
 
