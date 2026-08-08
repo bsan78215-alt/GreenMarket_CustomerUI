@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { Content, Header, Row, Stack } from '@/layout';
-import { Text, IconButton, Icon, BottomSheetSurface } from '@/design-system/components';
-import { BottomSheetContainer } from '@/containers';
+import { Text, IconButton, Icon, BottomSheetSurface, Snackbar } from '@/design-system/components';
+import { BottomSheetContainer, SnackbarContainer } from '@/containers';
 import { useGreenMarketRuntime } from '@/platform-core/navigation-runtime-layer/hooks/useGreenMarketRuntime';
 import type { SellerId } from '@/platform-core/contracts/Action';
 import { MockSellerRepository } from '@/platform-core/map/repository/MockSellerRepository';
@@ -13,6 +13,7 @@ import { MapRuntime } from '@/platform-core/map/runtime/MapRuntime';
 import { Diagnostics } from '@/platform-core/diagnostics/Diagnostics';
 import type { CameraParams, MapBounds, MapViewModel } from '@/platform-core/map/viewmodels/MapViewModel';
 import { MapBottomSheetContent } from '@/screens/map/MapBottomSheetContent';
+import { MapLocationButton } from '@/screens/map/MapLocationButton';
 
 /**
  * Экран Map (IMP-003.1 → IMP-003.1.1 → IMP-003.1.2). Архитектура:
@@ -36,6 +37,17 @@ export function MapScreenView() {
   const [centerRequestToken, setCenterRequestToken] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [lastBounds, setLastBounds] = useState<MapBounds | null>(null);
+  const [locationError, setLocationError] = useState(false);
+  const locationErrorTimerRef = useRef<number | null>(null);
+
+  /** Показывает snackbar «Не удалось определить местоположение» (MAP-005 §4) и
+   *  автоматически скрывает его через несколько секунд. Повторное нажатие
+   *  кнопки перезапускает таймер скрытия. */
+  const showLocationError = useCallback(() => {
+    setLocationError(true);
+    if (locationErrorTimerRef.current !== null) window.clearTimeout(locationErrorTimerRef.current);
+    locationErrorTimerRef.current = window.setTimeout(() => setLocationError(false), 4000);
+  }, []);
 
   const loadVisibleSellers = useCallback(async (bounds: MapBounds) => {
     MapRuntime.dispatch({ type: 'SELLERS_LOADING' });
@@ -54,6 +66,14 @@ export function MapScreenView() {
     // границами (а не приближением через радиус, IMP-003.1.2 §3).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- один раз при монтировании экрана
   }, []);
+
+  // Сброс таймера скрытия snackbar об ошибке геолокации при размонтировании экрана.
+  useEffect(
+    () => () => {
+      if (locationErrorTimerRef.current !== null) window.clearTimeout(locationErrorTimerRef.current);
+    },
+    [],
+  );
 
   const handleVisibleBoundsChange = useCallback(
     (bounds: MapBounds) => {
@@ -108,9 +128,19 @@ export function MapScreenView() {
       setCenterRequestToken((t) => t + 1);
     } catch {
       // IMP-003.1.1 §5 / IMP-003.1.2 §7: нет разрешения/недоступна
-      // геолокация — экран продолжает работать без ошибок.
+      // геолокация — экран продолжает работать без ошибок. Показываем
+      // пользователю сообщение об ошибке (MAP-005 §4); положение карты
+      // при этом не меняется.
+      //
+      // TODO (логирование): в будущем сюда нужно добавить логирование
+      // ошибки геолокации через общую систему диагностики, например
+      // Diagnostics.track('map.locate_failed', { error }) — см.
+      // platform-core/diagnostics/Diagnostics.ts. Для этого в catch нужно
+      // принимать сам объект ошибки (catch (error: unknown)) и передавать
+      // его в track(), а не глотать молча, как сейчас.
+      showLocationError();
     }
-  }, [dispatch]);
+  }, [dispatch, showLocationError]);
 
   const handleOpenSellerList = useCallback(() => dispatch({ type: 'OPEN_SELLER_LIST' }), [dispatch]);
   const handleOpenCatalog = useCallback(() => dispatch({ type: 'OPEN_CATALOG' }), [dispatch]);
@@ -203,7 +233,7 @@ export function MapScreenView() {
       </Header>
 
       <Content style={{ position: 'relative', flex: 1, padding: 0 }}>
-        <div style={{ position: 'absolute', inset: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
           <MapAdapter
             sellers={mapState.visibleSellers}
             selectedSellerId={mapState.selectedSellerId}
@@ -234,6 +264,7 @@ export function MapScreenView() {
           >
             <Icon label="Рядом">🧭</Icon>
           </IconButton>
+          <MapLocationButton onLocate={() => void handleCenterOnUser()} />
         </Stack>
       </Content>
 
@@ -257,6 +288,14 @@ export function MapScreenView() {
             />
           </BottomSheetSurface>
         </BottomSheetContainer>
+      )}
+
+      {locationError && (
+        <SnackbarContainer>
+          <Snackbar tone="error" data-testid="location-error-snackbar">
+            Не удалось определить местоположение
+          </Snackbar>
+        </SnackbarContainer>
       )}
     </div>
   );

@@ -1,6 +1,14 @@
 # CODE_INDEX.md
 
-Все 63 файла .ts/.tsx репозитория (56 .ts + 7 .tsx), суммарно 3174 строки. Источник — обход дерева + заголовочные комментарии каждого файла (не пересказ, а прямое чтение). Столбец «Слой» — по повторяющемуся паттерну Screen → Builder → Adapter → ViewModel, встречающемуся во всех 7 доменных модулях.
+Индекс всех файлов .ts/.tsx репозитория (без `node_modules`): **187 файлов** (138 .ts + 49 .tsx), суммарно ~9 760 строк. Часть из них — копии (см. ниже), поэтому суммы по копиям не складываются в «уникальный» объём кода.
+
+Репозиторий содержит **две копии** кода платформы:
+- `greenmarket/GreenMarket/` — эталонная библиотека доменов (63 файла, 3174 строки) — разделы 1–11 ниже;
+- `react-vite-bootstrap-project/src/platform-core/` — рабочая копия той же библиотеки внутри исполняемого приложения + домен Map и доп. файлы (75 файлов, 3910 строк) — раздел 12.
+
+Счётчик строк в этом файле соответствует `(Get-Content ...).Count` (считает и пустые строки); это «сырой» подсчёт, из-за чего строки файлов могут не совпадать с тем, что показывает редактор без учёта пустых строк.
+
+Источник — обход дерева + заголовочные комментарии каждого файла (не пересказ, а прямое чтение). Столбец «Слой» — по повторяющемуся паттерну Screen → Builder → Adapter → ViewModel, встречающемуся во всех 7 доменных модулях.
 
 ## Легенда паттерна модуля
 
@@ -115,7 +123,9 @@
 | presentation/RatingVm.ts | 4 |
 | presentation/SubtitleParts.ts | 3 |
 
-## 11. navigation-runtime-layer/ — отдельный runtime-слой (11 файлов, единственное место с тестами)
+## 11. navigation-runtime-layer/ — отдельный runtime-слой (11 файлов, единственное место с тестами вне react-vite)
+
+> Тесты есть также в рабочей копии этого слоя: `react-vite-bootstrap-project/src/platform-core/navigation-runtime-layer/` (2 файла). В остальном коде приложения автотестов нет.
 
 | Файл | Строк | Назначение |
 |---|---|---|
@@ -131,8 +141,68 @@
 | domain/catalog/__tests__/DomainModels.test.ts | 66 | Проверяет форму моделей по GM-DOM-001 §5.1–5.5 — файла нет |
 | domain/catalog/__tests__/MockSellerProductPhotoRepository.test.ts | 35 | — |
 
-Тесты — единственная работоспособная проверка в репозитории, но запускаются вручную через npx tsx, без jest/vitest-конфигурации и без CI.
+Тесты (вне react-vite — единственная работоспособная проверка в репозитории) запускаются вручную через npx tsx, без jest/vitest-конфигурации и без CI.
+
+## 12. react-vite-bootstrap-project/ — исполняемое приложение Stage 1 (123 файла .ts/.tsx в src/, 6554 строки)
+
+Приложение-сборка (React 18 + Vite 5 + TypeScript strict, запуск `greenmarket-server.bat start`). Код разделён на инфраструктуру приложения и рабочую копию платформы.
+
+### 12.1 src/app/ — App Shell (4 файла, 235 строк)
+
+| Файл | Строк | Назначение |
+|---|---|---|
+| App.tsx | 29 | Композиция: ErrorBoundary → ThemeProvider → GreenMarketRuntimeProvider → Router → Screen |
+| ErrorBoundary.tsx | 36 | Фолбэк при ошибке рендера |
+| NavigationContainer.tsx | 76 | Маршруты роутера: `/` Главная, `/catalog`, `/product/:productId`, `/map`, `/cart`, `/profile` и заглушки |
+| RuntimeRouteSync.tsx | 94 | Синхронизация React Router и runtime-стека навигации |
+
+### 12.2 src/buyer_mvp/ — Buyer MVP Stage 1 (12 файлов .ts/.tsx, 648 строк; контракт — Catalog API)
+
+Единственный функционально реализованный продуктовый сценарий. Экраны: Главная (дерево категорий + поиск), Каталог (список, сортировка, пагинация, фильтр), Карточка товара (офферы продавцов, лента фото). Именно эти экраны описывает `tests_folder/TZ_TESTING_BUYER_MVP.md`.
+
+| Файл | Строк | Назначение |
+|---|---|---|
+| types.ts | 71 | Контракт Catalog API: ProductGroup, ProductListItem, ProductDetail, SellerOffer, CatalogQuery |
+| api.ts | 64 | HTTP-клиент к `/catalog/groups`, `/catalog/products`, `/catalog/products/{id}` |
+| format.ts | 25 | Форматирование цены/счётчиков (Decimal приходит строкой) |
+| screens/HomeScreen.tsx | 77 | Главная: дерево категорий, поиск |
+| screens/CatalogScreen.tsx | 123 | Каталог: список, сортировка, пагинация, состояния Loading/Empty/Error |
+| screens/ProductScreen.tsx | 82 | Карточка товара: офферы, лента фото |
+| components/CategoryTree.tsx | 40 | Дерево категорий |
+| components/OfferCard.tsx | 37 | Оффер продавца |
+| components/PhotoStrip.tsx | 42 | Лента фотографий оффера (0/1/N, см. регресс в TZ_TESTING_BUYER_MVP) |
+| components/PhotoPlaceholder.tsx | 12 | Плейсхолдер фото |
+| components/ProductCard.tsx | 42 | Карточка товара в списке |
+| components/SearchBar.tsx | 33 | Поле поиска |
+
+### 12.3 src/platform-core/ — рабочая копия greenmarket/GreenMarket/ + новые модули (75 файлов .ts/.tsx, 3910 строк)
+
+Повторяет всю структуру разделов 1–10 (домены basket, catalog, favorites, product_card, purchase_options, search, seller_card; contracts; screens; formatting/presentation; BottomSheetDeclarative.tsx) и добавляет то, чего в `greenmarket/` нет:
+
+| Файл | Строк | Назначение |
+|---|---|---|
+| map/ (12 файлов, 746 строк) | — | **Домен Map** (ссылается на IMP-003.1 / IMP-003.1.1 / IMP-003.1.2 / AR-003 — документов нет): MapRuntime (147), LeafletAdapter (145), MockSellerRepository (115), GeoService (93), MapSheetAdapter (62), MapViewModel (52), MapConfig (33), MapAdapterTypes (29), SellerRepository (25), TileProvider (22), MapBuilder (12), MapAdapter (11) |
+| contracts/BusinessEvent.ts | 17 | Тип бизнес-событий (вынесен из BottomSheetDeclarative.tsx) |
+| diagnostics/Diagnostics.ts | 43 | Логирование по IMP-003.1.2 §14 |
+| screens/MapScreen.ts | 26 | ScreenDefinition экрана Map (12 действий из IMP-003.1 §9) |
+| screens/SellerCatalogScreen.ts | 20 | ПАТЧ при интеграции Map (импорт каталога продавца в навигацию) |
+| screens/SellerListScreen.ts | 24 | Заглушка Seller List (не входит в объём IMP-003.1) |
+| navigation-runtime-layer/ (6 файлов) | 500 | Копия runtime-слоя из раздела 11: GreenMarketRuntime (155), NavigationStack (103), useGreenMarketRuntime (91), ScreenRegistry (48), + 2 теста (65 + 38) |
+
+Сверка копий: `BottomSheetDeclarative.tsx`, `viewmodels/SellerCardViewModel.ts`, `purchase_options/*` идентичны оригиналам в `greenmarket/`; `contracts/Action.ts`, `screens/CatalogScreen.ts`, `runtime/GreenMarketRuntime.ts` и др. разошлись (проверено хэшированием).
+
+### 12.4 src/design-system/, containers/, layout/, screens/, repositories/, mocks/ — реализация UI (32 файла .ts/.tsx)
+
+| Подсистема | Файлов | Строк | Назначение |
+|---|---|---|---|
+| design-system/ | 16 | 942 | Реализация Design System: tokens/ (colors 140, typography 102, scales 79), ThemeProvider/ThemeContext/useTheme, компоненты (Button 84, Text 80, Overlays 82, Avatar 76, ListItem 69, Surface 67, States 37, Loader 15) |
+| containers/ | 5 | 130 | BottomSheet (32), Modal (38), Overlay (41), Snackbar (10), index |
+| layout/ | 3 | 196 | Flex (120), Structure (71), index |
+| screens/ (вне platform-core) | 4 | 477 | MapScreenView (302 — реализация экрана Map), MapBottomSheetContent (92), MapLocationButton (64), PlaceholderScreen (19) |
+| repositories/ | 1 | 3 | index.ts (заглушка резерва под репозитории) |
+| mocks/ | 1 | 2 | index.ts (заглушка резерва под тестовую инфраструктуру) |
+| прочее | 2 | 11 | main.tsx (10), vite-env.d.ts (1) |
 
 ## Сводка по расхождениям код ↔ документация (детали в TRACEABILITY.md)
 
-Код ссылается на разделы (§N) следующих документов, отсутствующих как файлы в этом архиве: ТЗ-027, ТЗ-035, ТЗ-036, ТЗ-037, ТЗ-038, GM-DOM-001, GM-DOM-002, GM-DOM-003. Все ссылки на ТЗ-022, ТЗ-025, ТЗ-018, ТЗ-015, ТЗ-002, ТЗ-004, ТЗ-024 и GM-UX-001…013 — подтверждены существующими файлами.
+Код ссылается на разделы (§N) следующих документов, отсутствующих как файлы в этом архиве: ТЗ-027, ТЗ-035, ТЗ-036, ТЗ-037, ТЗ-038, GM-DOM-001, GM-DOM-002, GM-DOM-003, а также (только в `react-vite-bootstrap-project/src/platform-core/`) IMP-003.1, IMP-003.1.1, IMP-003.1.2, AR-003. Все ссылки на ТЗ-022, ТЗ-025, ТЗ-018, ТЗ-015, ТЗ-002, ТЗ-004, ТЗ-024 и GM-UX-001…013 — подтверждены существующими файлами.
